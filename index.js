@@ -37,6 +37,7 @@ async function run() {
     const productCollection = client.db("TechGadgetDb").collection("products");
     const upvoteCollection = client.db("TechGadgetDb").collection("upvote");
     const downvoteCollection = client.db("TechGadgetDb").collection("downvote");
+    const reviewCollection = client.db("TechGadgetDb").collection("review");
 
     // jwt api
     app.post("/jwt", async (req, res) => {
@@ -166,13 +167,19 @@ async function run() {
         res.send(result);
       });
      
-      // app.delete("/deleteProduct/:id",  async (req, res) => {
-      //   const id = req.params.id;
-      //   const query = { _id: new ObjectId(id) };
-      //   const result = await productCollection.deleteOne(query);
-      //   res.send(result);
-      // });
+      app.delete("/deleteProduct/:id",  async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await productCollection.deleteOne(query);
+        res.send(result);
+      });
   
+      // review
+      app.post("/review", async (req, res) => {
+        const item = req.body;
+        const result = await reviewCollection.insertOne(item);
+        res.send(result);
+      });
 
 
     // Send a ping to confirm a successful connection
