@@ -79,7 +79,14 @@ async function run() {
       res.send(result);
     });
 
+
     // product api's
+    app.post("/addProduct", async (req, res) => {
+      const item = req.body;
+      const result = await productCollection.insertOne(item);
+      res.send(result);
+    });
+
     app.get("/product", async (req, res) => {
       const result = await productCollection.find().toArray();
       res.send(result);
@@ -134,6 +141,38 @@ async function run() {
         res.send(result);
       });
 
+
+      // get user products
+      app.get("/userProducts", async (req, res) => {
+        const email = req.query.email;
+        const query = { email: email };
+        const result = await productCollection.find(query).toArray();
+        res.send(result);
+      });
+      app.patch("/userProducts/:id", async (req, res) => {
+        const item = req.body;
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            name: item.name,
+            link: item.link,
+            tag: item.tag,
+            details: item.details,
+            image: item.image,
+          },
+        };
+        const result = await productCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      });
+     
+      // app.delete("/deleteProduct/:id",  async (req, res) => {
+      //   const id = req.params.id;
+      //   const query = { _id: new ObjectId(id) };
+      //   const result = await productCollection.deleteOne(query);
+      //   res.send(result);
+      // });
+  
 
 
     // Send a ping to confirm a successful connection
