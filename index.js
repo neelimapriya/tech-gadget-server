@@ -88,10 +88,31 @@ async function run() {
       res.send(result);
     });
 
+    
     app.get("/product", async (req, res) => {
-      const result = await productCollection.find().toArray();
+      const filter =req.query;
+      console.log(filter)
+      const query ={
+        tag:{$regex: filter.search, $options: 'i'}
+      }
+      const page = parseInt(req.query.page);
+      const size = parseInt(req.query.size);
+     
+
+     
+      const result = await productCollection
+      .find(query)
+      .skip(page * size)
+      .limit(size)
+      .toArray();
       res.send(result);
     });
+
+    // --------pagination--------
+    app.get('/productCount', async(req,res)=>{
+      const number =await productCollection.estimatedDocumentCount()
+      res.send({number})
+    })
 
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
@@ -150,6 +171,20 @@ async function run() {
         const result = await productCollection.find(query).toArray();
         res.send(result);
       });
+      // for upvote
+      app.patch("/upVoteInsert/:id", async (req, res) => {
+        const item = req.body;
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            vote: item.vote,
+            
+          },
+        };
+        const result = await productCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      });
       app.patch("/userProducts/:id", async (req, res) => {
         const item = req.body;
         const id = req.params.id;
@@ -178,6 +213,14 @@ async function run() {
       app.post("/review", async (req, res) => {
         const item = req.body;
         const result = await reviewCollection.insertOne(item);
+        res.send(result);
+      });
+      app.get("/reviewItem/:Id", async (req, res) => {
+        const Id = decodeURIComponent(req.params.Id)
+        console.log(Id);
+        const query = { ProductId: Id };
+        console.log(query);
+        const result = await reviewCollection.find(query).toArray();
         res.send(result);
       });
 
