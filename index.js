@@ -38,6 +38,7 @@ async function run() {
     const upvoteCollection = client.db("TechGadgetDb").collection("upvote");
     const downvoteCollection = client.db("TechGadgetDb").collection("downvote");
     const reviewCollection = client.db("TechGadgetDb").collection("review");
+    const queueCollection = client.db("TechGadgetDb").collection("queue");
 
     //--------- jwt api--------
     app.post("/jwt", async (req, res) => {
@@ -76,7 +77,7 @@ async function run() {
       next();
     };
     // --------is modaretor api---------
-    const verifyModaretor= async (req, res, next) => {
+    const verifyModaretor = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
@@ -86,8 +87,6 @@ async function run() {
       }
       next();
     };
-
-
 
     // ---------user collection----------
     app.post("/users", async (req, res) => {
@@ -111,8 +110,8 @@ async function run() {
       res.send(result);
     });
 
-     //-------- make admin api-------
-     app.patch("/user/admin/:id",  async (req, res) => {
+    //-------- make admin api-------
+    app.patch("/user/admin/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -123,8 +122,8 @@ async function run() {
       const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
-     // ---------make moderator api-------
-     app.patch("/user/modaretor/:id",  async (req, res) => {
+    // ---------make moderator api-------
+    app.patch("/user/modaretor/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -144,40 +143,84 @@ async function run() {
       res.send(result);
     });
 
-
-
     //-------- product api's-------------
+
+    // -----post in QUEUE-------
     app.post("/addProduct", async (req, res) => {
+      const item = req.body;
+      const result = await queueCollection.insertOne(item);
+      res.send(result);
+    });
+
+    // ----delete from queue when accepted----
+    app.delete("/deleteQueue/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await queueCollection.deleteOne(query);
+      res.send(result);
+    });
+
+
+
+
+    // -----accepted product from QUEUE post in all products-------
+    app.post("/acceptProduct", async (req, res) => {
       const item = req.body;
       const result = await productCollection.insertOne(item);
       res.send(result);
     });
 
-    
+
+
+    // --------make featured products(modaretor)-----
+    app.patch("/featured/:id", async (req, res) => {
+      
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          type: "featured",
+        },
+      };
+      const result = await queueCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    // ----get posted product from queue---------
+    app.get("/getQueue", async (req, res) => {
+      const result = await queueCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/getQueue/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await queueCollection.findOne(query);
+      // console.log({ result }, 'queue');
+      res.send(result);
+    });
+
+    // -----get all products--------
     app.get("/product", async (req, res) => {
-      const filter =req.query;
-      console.log(filter)
-      const query ={
-        tag:{$regex: filter.search, $options: 'i'}
-      }
+      const filter = req.query;
+      console.log(filter);
+      const query = {
+        tag: { $regex: filter.search, $options: "i" },
+      };
       const page = parseInt(req.query.page);
       const size = parseInt(req.query.size);
-     
-
-     
       const result = await productCollection
-      .find(query)
-      .skip(page * size)
-      .limit(size)
-      .toArray();
+        .find(query)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
     });
 
     // --------pagination--------
-    app.get('/productCount', async(req,res)=>{
-      const number =await productCollection.estimatedDocumentCount()
-      res.send({number})
-    })
+    app.get("/productCount", async (req, res) => {
+      const number = await productCollection.estimatedDocumentCount();
+      res.send({ number });
+    });
 
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
@@ -203,92 +246,89 @@ async function run() {
       res.send(result);
     });
 
-
     //------------- upvote api
     app.post("/upvote", async (req, res) => {
-        const item = req.body;
-        const result = await upvoteCollection.insertOne(item);
-        res.send(result);
-      });
-      app.get("/upvoteCount", async (req, res) => {
-        const result = await upvoteCollection.find().toArray();
-        res.send(result);
-      });
-      
+      const item = req.body;
+      const result = await upvoteCollection.insertOne(item);
+      res.send(result);
+    });
+    app.get("/upvoteCount", async (req, res) => {
+      const result = await upvoteCollection.find().toArray();
+      res.send(result);
+    });
 
     // --------------downvote api
     app.post("/down", async (req, res) => {
-        const item = req.body;
-        const result = await downvoteCollection.insertOne(item);
-        res.send(result);
-      });
+      const item = req.body;
+      const result = await downvoteCollection.insertOne(item);
+      res.send(result);
+    });
 
-      app.get("/downvoteCount", async (req, res) => {
-        const result = await downvoteCollection.find().toArray();
-        res.send(result);
-      });
+    app.get("/downvoteCount", async (req, res) => {
+      const result = await downvoteCollection.find().toArray();
+      res.send(result);
+    });
 
+    // get user products
+    app.get("/userProducts", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await productCollection.find(query).toArray();
+      res.send(result);
+    });
+    // for upvote
+    // app.patch("/upVoteInsert/:id", async (req, res) => {
+    //   const item = req.body;
+    //   const id = req.params.id;
+    //   const filter = { _id: new ObjectId(id) };
+    //   const updatedDoc = {
+    //     $set: {
+    //       vote: item.vote,
+    //     },
+    //   };
+    //   const result = await productCollection.updateOne(filter, updatedDoc);
+    //   res.send(result);
+    // });
 
-      // get user products
-      app.get("/userProducts", async (req, res) => {
-        const email = req.query.email;
-        const query = { email: email };
-        const result = await productCollection.find(query).toArray();
-        res.send(result);
-      });
-      // for upvote
-      app.patch("/upVoteInsert/:id", async (req, res) => {
-        const item = req.body;
-        const id = req.params.id;
-        const filter = { _id: new ObjectId(id) };
-        const updatedDoc = {
-          $set: {
-            vote: item.vote,
-            
-          },
-        };
-        const result = await productCollection.updateOne(filter, updatedDoc);
-        res.send(result);
-      });
-      app.patch("/userProducts/:id", async (req, res) => {
-        const item = req.body;
-        const id = req.params.id;
-        const filter = { _id: new ObjectId(id) };
-        const updatedDoc = {
-          $set: {
-            name: item.name,
-            link: item.link,
-            tag: item.tag,
-            details: item.details,
-            image: item.image,
-          },
-        };
-        const result = await productCollection.updateOne(filter, updatedDoc);
-        res.send(result);
-      });
-     
-      app.delete("/deleteProduct/:id",  async (req, res) => {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const result = await productCollection.deleteOne(query);
-        res.send(result);
-      });
-  
-      // review
-      app.post("/review", async (req, res) => {
-        const item = req.body;
-        const result = await reviewCollection.insertOne(item);
-        res.send(result);
-      });
-      app.get("/reviewItem/:Id", async (req, res) => {
-        const Id = decodeURIComponent(req.params.Id)
-        console.log(Id);
-        const query = { ProductId: Id };
-        console.log(query);
-        const result = await reviewCollection.find(query).toArray();
-        res.send(result);
-      });
+    // --------user products update--------
+    app.patch("/userProducts/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          name: item.name,
+          link: item.link,
+          tag: item.tag,
+          details: item.details,
+          image: item.image,
+        },
+      };
+      const result = await productCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
 
+    app.delete("/deleteProduct/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await productCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //------------ review---------
+    app.post("/review", async (req, res) => {
+      const item = req.body;
+      const result = await reviewCollection.insertOne(item);
+      res.send(result);
+    });
+    app.get("/reviewItem/:Id", async (req, res) => {
+      const Id = decodeURIComponent(req.params.Id);
+      console.log(Id);
+      const query = { ProductId: Id };
+      console.log(query);
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
