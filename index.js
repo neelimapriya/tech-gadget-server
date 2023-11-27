@@ -76,6 +76,7 @@ async function run() {
       }
       next();
     };
+
     // --------is modaretor api---------
     const verifyModaretor = async (req, res, next) => {
       const email = req.decoded.email;
@@ -110,6 +111,7 @@ async function run() {
       res.send(result);
     });
 
+    // ------------------ADMIN------------------
     //-------- make admin api-------
     app.patch("/user/admin/:id", async (req, res) => {
       const id = req.params.id;
@@ -122,6 +124,22 @@ async function run() {
       const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
+    // --------- get admin api-------
+    app.get("/user/admin/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === "admin";
+      }
+      res.send({ admin });
+    });
+
+    // ------------MODARETOR--------------------
     // ---------make moderator api-------
     app.patch("/user/modaretor/:id", async (req, res) => {
       const id = req.params.id;
@@ -134,6 +152,22 @@ async function run() {
       const result = await userCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
+    // -------get modaretor api---------
+    app.get("/user/modaretor/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let modaretor = false;
+      if (user) {
+        modaretor = user?.role === "modaretor";
+      }
+      console.log(modaretor)
+      res.send({ modaretor });
+    });
+
 
     // ------delete user----------
     app.delete("/user/:id", verifyToken, verifyAdmin, async (req, res) => {
@@ -160,9 +194,6 @@ async function run() {
       res.send(result);
     });
 
-
-
-
     // -----accepted product from QUEUE post in all products-------
     app.post("/acceptProduct", async (req, res) => {
       const item = req.body;
@@ -170,11 +201,8 @@ async function run() {
       res.send(result);
     });
 
-
-
     // --------make featured products(modaretor)-----
     app.patch("/featured/:id", async (req, res) => {
-      
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -258,7 +286,14 @@ async function run() {
       const result = await productCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
-
+    // ----get reported products----------
+    app.get("/reported", async (req, res) => {
+      const result = await productCollection
+        .find({ status: "reported" })
+        .toArray();
+      console.log({ result });
+      res.send(result);
+    });
 
     //------------- upvote api
     app.post("/upvote", async (req, res) => {
@@ -290,19 +325,6 @@ async function run() {
       const result = await productCollection.find(query).toArray();
       res.send(result);
     });
-    // for upvote
-    // app.patch("/upVoteInsert/:id", async (req, res) => {
-    //   const item = req.body;
-    //   const id = req.params.id;
-    //   const filter = { _id: new ObjectId(id) };
-    //   const updatedDoc = {
-    //     $set: {
-    //       vote: item.vote,
-    //     },
-    //   };
-    //   const result = await productCollection.updateOne(filter, updatedDoc);
-    //   res.send(result);
-    // });
 
     // --------user products update--------
     app.patch("/userProducts/:id", async (req, res) => {
