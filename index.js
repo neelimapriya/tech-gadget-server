@@ -216,7 +216,7 @@ async function run() {
       res.send(result);
     });
 
-    // --------pagination--------
+    // --------pagination count--------
     app.get("/productCount", async (req, res) => {
       const number = await productCollection.estimatedDocumentCount();
       res.send({ number });
@@ -245,6 +245,20 @@ async function run() {
       console.log({ result });
       res.send(result);
     });
+
+    // ---------report product api---------
+    app.patch("/report/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: "reported",
+        },
+      };
+      const result = await productCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
 
     //------------- upvote api
     app.post("/upvote", async (req, res) => {
