@@ -39,7 +39,7 @@ async function run() {
     const downvoteCollection = client.db("TechGadgetDb").collection("downvote");
     const reviewCollection = client.db("TechGadgetDb").collection("review");
 
-    // jwt api
+    //--------- jwt api--------
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
@@ -48,7 +48,7 @@ async function run() {
       res.send({ token });
     });
 
-    // middlewares
+    // --------middlewares----------
     const verifyToken = (req, res, next) => {
       console.log("inside verify token", req.headers.authorization);
       if (!req.headers.authorization) {
@@ -64,7 +64,32 @@ async function run() {
       });
     };
 
-    // user collection
+    // --------is admin api---------
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+    // --------is modaretor api---------
+    const verifyModaretor= async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isModaretor = user?.role === "modaretor";
+      if (!isModaretor) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+
+
+
+    // ---------user collection----------
     app.post("/users", async (req, res) => {
       const user = req.body;
       console.log(user);
@@ -80,8 +105,48 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/getUser", async (req, res) => {
+      console.log(req.headers);
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
 
-    // product api's
+     //-------- make admin api-------
+     app.patch("/user/admin/:id",  async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+     // ---------make moderator api-------
+     app.patch("/user/modaretor/:id",  async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          role: "modaretor",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    // ------delete user----------
+    app.delete("/user/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
+
+
+
+    //-------- product api's-------------
     app.post("/addProduct", async (req, res) => {
       const item = req.body;
       const result = await productCollection.insertOne(item);
@@ -139,7 +204,7 @@ async function run() {
     });
 
 
-    // upvote api
+    //------------- upvote api
     app.post("/upvote", async (req, res) => {
         const item = req.body;
         const result = await upvoteCollection.insertOne(item);
@@ -151,7 +216,7 @@ async function run() {
       });
       
 
-    // downvote api
+    // --------------downvote api
     app.post("/down", async (req, res) => {
         const item = req.body;
         const result = await downvoteCollection.insertOne(item);
