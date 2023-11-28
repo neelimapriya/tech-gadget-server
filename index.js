@@ -3,7 +3,9 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_API_KEY);
 
+// 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 5000;
@@ -39,6 +41,7 @@ async function run() {
     const downvoteCollection = client.db("TechGadgetDb").collection("downvote");
     const reviewCollection = client.db("TechGadgetDb").collection("review");
     const queueCollection = client.db("TechGadgetDb").collection("queue");
+    const paymentCollection = client.db("TechGadgetDb").collection("payments");
 
     //--------- jwt api--------
     app.post("/jwt", async (req, res) => {
@@ -51,7 +54,7 @@ async function run() {
 
     // --------middlewares----------
     const verifyToken = (req, res, next) => {
-      console.log("inside verify token", req.headers.authorization);
+      // console.log("inside verify token", req.headers.authorization);
       if (!req.headers.authorization) {
         return res.status(401).send({ message: "unauthorized access" });
       }
@@ -365,6 +368,32 @@ async function run() {
       const result = await reviewCollection.find(query).toArray();
       res.send(result);
     });
+
+    // --------------PAYMENT----------
+    // from stripe payment docs
+    app.post('/create-payment-intent', async(req,res)=>{
+      const {money}=req.body;
+      const amount=parseInt(money *100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    })
+
+    // -----post payment info indatabase------
+    app.post('/payments',async(req,res)=>{
+      const payment =req.body;
+      const paymentResult=await paymentCollection.insertOne(payment)
+      res.send(paymentResult)
+    })
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
