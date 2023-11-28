@@ -392,6 +392,11 @@ async function run() {
       res.send(paymentResult)
     })
 
+    app.get("/verified", async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    });
+
 
 
 
