@@ -33,8 +33,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
-
+    
     const userCollection = client.db("TechGadgetDb").collection("users");
     const productCollection = client.db("TechGadgetDb").collection("products");
     const upvoteCollection = client.db("TechGadgetDb").collection("upvote");
@@ -108,7 +107,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/getUser", async (req, res) => {
+    app.get("/getUser",verifyToken,verifyAdmin, async (req, res) => {
       console.log(req.headers);
       const result = await userCollection.find().toArray();
       res.send(result);
@@ -116,7 +115,7 @@ async function run() {
 
     // ------------------ADMIN------------------
     //-------- make admin api-------
-    app.patch("/user/admin/:id", async (req, res) => {
+    app.patch("/user/admin/:id",verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -128,7 +127,7 @@ async function run() {
       res.send(result);
     });
     // --------- get admin api-------
-    app.get("/user/admin/:email", verifyToken, async (req, res) => {
+    app.get("/user/admin/:email", verifyToken,verifyAdmin, async (req, res) => {
       const email = req.params.email;
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "forbidden access" });
@@ -144,7 +143,7 @@ async function run() {
 
     // ------------MODARETOR--------------------
     // ---------make moderator api-------
-    app.patch("/user/modaretor/:id", async (req, res) => {
+    app.patch("/user/modaretor/:id",verifyAdmin,verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -156,7 +155,7 @@ async function run() {
       res.send(result);
     });
     // -------get modaretor api---------
-    app.get("/user/modaretor/:email", verifyToken, async (req, res) => {
+    app.get("/user/modaretor/:email", verifyToken,verifyModaretor, async (req, res) => {
       const email = req.params.email;
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "forbidden access" });
@@ -183,14 +182,14 @@ async function run() {
     //-------- product api's-------------
 
     // -----post in QUEUE-------
-    app.post("/addProduct", async (req, res) => {
+    app.post("/addProduct",verifyToken, async (req, res) => {
       const item = req.body;
       const result = await queueCollection.insertOne(item);
       res.send(result);
     });
 
     // ----delete from queue when accepted----
-    app.delete("/deleteQueue/:id", async (req, res) => {
+    app.delete("/deleteQueue/:id",verifyToken,verifyModaretor, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await queueCollection.deleteOne(query);
@@ -198,14 +197,14 @@ async function run() {
     });
 
     // -----accepted product from QUEUE post in all products-------
-    app.post("/acceptProduct", async (req, res) => {
+    app.post("/acceptProduct",verifyToken,verifyModaretor, async (req, res) => {
       const item = req.body;
       const result = await productCollection.insertOne(item);
       res.send(result);
     });
 
     // --------make featured products(modaretor)-----
-    app.patch("/featured/:id", async (req, res) => {
+    app.patch("/featured/:id",verifyToken,verifyModaretor, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -218,11 +217,11 @@ async function run() {
     });
 
     // ----get posted product from queue---------
-    app.get("/getQueue", async (req, res) => {
+    app.get("/getQueue",verifyToken,verifyModaretor, async (req, res) => {
       const result = await queueCollection.find().toArray();
       res.send(result);
     });
-    app.get("/getQueue/:id", async (req, res) => {
+    app.get("/getQueue/:id",verifyToken,verifyModaretor, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await queueCollection.findOne(query);
@@ -278,7 +277,7 @@ async function run() {
     });
 
     // ---------report product api---------
-    app.patch("/report/:id", async (req, res) => {
+    app.patch("/report/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -290,7 +289,7 @@ async function run() {
       res.send(result);
     });
     // ----get reported products----------
-    app.get("/reported", async (req, res) => {
+    app.get("/reported",verifyToken,verifyModaretor, async (req, res) => {
       const result = await productCollection
         .find({ status: "reported" })
         .toArray();
@@ -299,7 +298,7 @@ async function run() {
     });
 
     //------------- upvote api
-    app.post("/upvote", async (req, res) => {
+    app.post("/upvote",verifyToken, async (req, res) => {
       const item = req.body;
       const result = await upvoteCollection.insertOne(item);
       res.send(result);
@@ -310,7 +309,7 @@ async function run() {
     });
 
     // --------------downvote api
-    app.post("/down", async (req, res) => {
+    app.post("/down",verifyToken, async (req, res) => {
       const item = req.body;
       const result = await downvoteCollection.insertOne(item);
       res.send(result);
@@ -322,7 +321,7 @@ async function run() {
     });
 
     // get user products
-    app.get("/userProducts", async (req, res) => {
+    app.get("/userProducts",verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       const result = await productCollection.find(query).toArray();
@@ -330,7 +329,7 @@ async function run() {
     });
 
     // --------user products update--------
-    app.patch("/userProducts/:id", async (req, res) => {
+    app.patch("/userProducts/:id",verifyToken, async (req, res) => {
       const item = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -347,7 +346,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/deleteProduct/:id", async (req, res) => {
+    app.delete("/deleteProduct/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productCollection.deleteOne(query);
@@ -355,7 +354,7 @@ async function run() {
     });
 
     //------------ review---------
-    app.post("/review", async (req, res) => {
+    app.post("/review",verifyToken, async (req, res) => {
       const item = req.body;
       const result = await reviewCollection.insertOne(item);
       res.send(result);
@@ -386,13 +385,13 @@ async function run() {
     })
 
     // -----post payment info indatabase------
-    app.post('/payments',async(req,res)=>{
+    app.post('/payments',verifyToken, async(req,res)=>{
       const payment =req.body;
       const paymentResult=await paymentCollection.insertOne(payment)
       res.send(paymentResult)
     })
 
-    app.get("/verified", async (req, res) => {
+    app.get("/verified",verifyToken, async (req, res) => {
       const result = await paymentCollection.find().toArray();
       res.send(result);
     });
