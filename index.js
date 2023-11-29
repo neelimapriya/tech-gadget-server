@@ -111,7 +111,7 @@ async function run() {
 
     // ------------------ADMIN------------------
     //-------- make admin api-------
-    app.patch("/user/admin/:id", verifyAdmin, async (req, res) => {
+    app.patch("/user/admin/:id",verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -451,6 +451,22 @@ async function run() {
       const result = await couponCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
+
+    //------ statistic page api-----
+    app.get('/stats',async(req,res)=>{
+      const productCount=await productCollection.countDocuments()
+      const reviewsCount =await reviewCollection.countDocuments()
+      const usersCount =await userCollection.countDocuments()
+      const data =[
+        { name: 'Products', value: productCount },
+        { name: 'Reviews', value: reviewsCount },
+        { name: 'Users', value: usersCount },
+      ]
+      res.send(data)
+    })
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
