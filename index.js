@@ -5,7 +5,7 @@ const app = express();
 const jwt = require("jsonwebtoken");
 const stripe = require("stripe")(process.env.STRIPE_API_KEY);
 
-// 
+//
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 5000;
@@ -13,10 +13,6 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(cors());
 app.use(express.json());
-
-// ({ origin: ["http://localhost:5173"], credentials: true }
-
-// const uri = `mongodb+srv://${process.env.TG_USER}:${process.env.TG_PASS}@cluster0.dtfuxds.mongodb.net/?retryWrites=true&w=majority`;
 
 const uri = `mongodb+srv://${process.env.TG_USER}:${process.env.TG_PASS}@cluster0.dtfuxds.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -33,14 +29,14 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    
     const userCollection = client.db("TechGadgetDb").collection("users");
     const productCollection = client.db("TechGadgetDb").collection("products");
-    const upvoteCollection = client.db("TechGadgetDb").collection("upvote");
-    const downvoteCollection = client.db("TechGadgetDb").collection("downvote");
+    // const upvoteCollection = client.db("TechGadgetDb").collection("upvote");
+    // const downvoteCollection = client.db("TechGadgetDb").collection("downvote");
     const reviewCollection = client.db("TechGadgetDb").collection("review");
     const queueCollection = client.db("TechGadgetDb").collection("queue");
     const paymentCollection = client.db("TechGadgetDb").collection("payments");
+    const couponCollection = client.db("TechGadgetDb").collection("coupon");
 
     //--------- jwt api--------
     app.post("/jwt", async (req, res) => {
@@ -107,7 +103,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/getUser",verifyToken,verifyAdmin, async (req, res) => {
+    app.get("/getUser", verifyToken, async (req, res) => {
       console.log(req.headers);
       const result = await userCollection.find().toArray();
       res.send(result);
@@ -115,7 +111,7 @@ async function run() {
 
     // ------------------ADMIN------------------
     //-------- make admin api-------
-    app.patch("/user/admin/:id",verifyAdmin, async (req, res) => {
+    app.patch("/user/admin/:id", verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -127,7 +123,7 @@ async function run() {
       res.send(result);
     });
     // --------- get admin api-------
-    app.get("/user/admin/:email", verifyToken,verifyAdmin, async (req, res) => {
+    app.get("/user/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "forbidden access" });
@@ -143,7 +139,7 @@ async function run() {
 
     // ------------MODARETOR--------------------
     // ---------make moderator api-------
-    app.patch("/user/modaretor/:id",verifyAdmin,verifyToken, async (req, res) => {
+    app.patch("/user/modaretor/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -155,7 +151,7 @@ async function run() {
       res.send(result);
     });
     // -------get modaretor api---------
-    app.get("/user/modaretor/:email", verifyToken,verifyModaretor, async (req, res) => {
+    app.get("/user/modaretor/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       if (email !== req.decoded.email) {
         return res.status(403).send({ message: "forbidden access" });
@@ -166,10 +162,9 @@ async function run() {
       if (user) {
         modaretor = user?.role === "modaretor";
       }
-      console.log(modaretor)
+      console.log(modaretor);
       res.send({ modaretor });
     });
-
 
     // ------delete user----------
     app.delete("/user/:id", verifyToken, verifyAdmin, async (req, res) => {
@@ -182,46 +177,61 @@ async function run() {
     //-------- product api's-------------
 
     // -----post in QUEUE-------
-    app.post("/addProduct",verifyToken, async (req, res) => {
+    app.post("/addProduct", verifyToken, async (req, res) => {
       const item = req.body;
       const result = await queueCollection.insertOne(item);
       res.send(result);
     });
 
     // ----delete from queue when accepted----
-    app.delete("/deleteQueue/:id",verifyToken,verifyModaretor, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await queueCollection.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/deleteQueue/:id",
+      verifyToken,
+      verifyModaretor,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await queueCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
     // -----accepted product from QUEUE post in all products-------
-    app.post("/acceptProduct",verifyToken,verifyModaretor, async (req, res) => {
-      const item = req.body;
-      const result = await productCollection.insertOne(item);
-      res.send(result);
-    });
+    app.post(
+      "/acceptProduct",
+      verifyToken,
+      verifyModaretor,
+      async (req, res) => {
+        const item = req.body;
+        const result = await productCollection.insertOne(item);
+        res.send(result);
+      }
+    );
 
     // --------make featured products(modaretor)-----
-    app.patch("/featured/:id",verifyToken,verifyModaretor, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          type: "featured",
-        },
-      };
-      const result = await queueCollection.updateOne(filter, updatedDoc);
-      res.send(result);
-    });
+    app.patch(
+      "/featured/:id",
+      verifyToken,
+      verifyModaretor,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            type: "featured",
+          },
+        };
+        const result = await queueCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      }
+    );
 
     // ----get posted product from queue---------
-    app.get("/getQueue",verifyToken,verifyModaretor, async (req, res) => {
+    app.get("/getQueue", verifyToken, verifyModaretor, async (req, res) => {
       const result = await queueCollection.find().toArray();
       res.send(result);
     });
-    app.get("/getQueue/:id",verifyToken,verifyModaretor, async (req, res) => {
+    app.get("/getQueue/:id", verifyToken, verifyModaretor, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await queueCollection.findOne(query);
@@ -243,7 +253,9 @@ async function run() {
         .skip(page * size)
         .limit(size)
         .toArray();
+        console.log(result,"pagination")
       res.send(result);
+      
     });
 
     // --------pagination count--------
@@ -257,6 +269,45 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await productCollection.findOne(query);
       console.log({ result });
+      res.send(result);
+    });
+
+    // for upvote
+    app.patch("/upvote/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id, "id");
+      const filter = {
+        _id: new ObjectId(id),
+      };
+      console.log(req.body.vote, "vote");
+
+      const updateInfo = {
+        $set: {
+          vote: req.body.vote,
+        },
+      };
+
+      const result = await productCollection.updateOne(filter, updateInfo);
+      console.log(result);
+      res.send(result);
+    });
+    // for downVote
+    app.patch("/downVote/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id, "id");
+      const filter = {
+        _id: new ObjectId(id),
+      };
+      console.log(req.body.downVote, "downVote");
+
+      const updateInfo = {
+        $set: {
+          downVote: req.body.downVote,
+        },
+      };
+
+      const result = await productCollection.updateOne(filter, updateInfo);
+      console.log(result);
       res.send(result);
     });
 
@@ -277,7 +328,7 @@ async function run() {
     });
 
     // ---------report product api---------
-    app.patch("/report/:id",verifyToken, async (req, res) => {
+    app.patch("/report/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
@@ -289,7 +340,7 @@ async function run() {
       res.send(result);
     });
     // ----get reported products----------
-    app.get("/reported",verifyToken,verifyModaretor, async (req, res) => {
+    app.get("/reported", verifyToken, verifyModaretor, async (req, res) => {
       const result = await productCollection
         .find({ status: "reported" })
         .toArray();
@@ -297,31 +348,8 @@ async function run() {
       res.send(result);
     });
 
-    //------------- upvote api
-    app.post("/upvote",verifyToken, async (req, res) => {
-      const item = req.body;
-      const result = await upvoteCollection.insertOne(item);
-      res.send(result);
-    });
-    app.get("/upvoteCount", async (req, res) => {
-      const result = await upvoteCollection.find().toArray();
-      res.send(result);
-    });
-
-    // --------------downvote api
-    app.post("/down",verifyToken, async (req, res) => {
-      const item = req.body;
-      const result = await downvoteCollection.insertOne(item);
-      res.send(result);
-    });
-
-    app.get("/downvoteCount", async (req, res) => {
-      const result = await downvoteCollection.find().toArray();
-      res.send(result);
-    });
-
     // get user products
-    app.get("/userProducts",verifyToken, async (req, res) => {
+    app.get("/userProducts", verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       const result = await productCollection.find(query).toArray();
@@ -329,7 +357,7 @@ async function run() {
     });
 
     // --------user products update--------
-    app.patch("/userProducts/:id",verifyToken, async (req, res) => {
+    app.patch("/userProducts/:id", verifyToken, async (req, res) => {
       const item = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -346,7 +374,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/deleteProduct/:id",verifyToken, async (req, res) => {
+    app.delete("/deleteProduct/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productCollection.deleteOne(query);
@@ -354,7 +382,7 @@ async function run() {
     });
 
     //------------ review---------
-    app.post("/review",verifyToken, async (req, res) => {
+    app.post("/review", verifyToken, async (req, res) => {
       const item = req.body;
       const result = await reviewCollection.insertOne(item);
       res.send(result);
@@ -370,9 +398,9 @@ async function run() {
 
     // --------------PAYMENT----------
     // from stripe payment docs
-    app.post('/create-payment-intent', async(req,res)=>{
-      const {money}=req.body;
-      const amount=parseInt(money *100);
+    app.post("/create-payment-intent", async (req, res) => {
+      const { money } = req.body;
+      const amount = parseInt(money * 100);
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -382,22 +410,47 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
-    })
+    });
 
     // -----post payment info indatabase------
-    app.post('/payments',verifyToken, async(req,res)=>{
-      const payment =req.body;
-      const paymentResult=await paymentCollection.insertOne(payment)
-      res.send(paymentResult)
-    })
+    app.post("/payments", verifyToken, async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment);
+      res.send(paymentResult);
+    });
 
-    app.get("/verified",verifyToken, async (req, res) => {
+    app.get("/verified", verifyToken, async (req, res) => {
       const result = await paymentCollection.find().toArray();
       res.send(result);
     });
 
+    // coupon
+    app.get("/coupons", verifyToken, async (req, res) => {
+      const result = await couponCollection.find().toArray();
+      res.send(result);
+    });
 
-
+    app.get("/coupon/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await couponCollection.findOne(query);
+      console.log({ result });
+      res.send(result);
+    });
+    app.patch("/updateCoupon/:id", verifyToken, async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          Amount: item.Amount,
+          Code: item.Code,
+          description: item.description,
+        },
+      };
+      const result = await couponCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
