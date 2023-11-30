@@ -242,7 +242,7 @@ async function run() {
     // -----get all products--------
     app.get("/product", async (req, res) => {
       const filter = req.query;
-      console.log(filter);
+      // console.log(filter);
       const query = {
         tag: { $regex: filter.search, $options: "i" },
       };
@@ -251,9 +251,9 @@ async function run() {
       const result = await productCollection
         .find(query)
         .skip(page * size)
-        .limit(size)
+        .limit( size)
         .toArray();
-        console.log(result,"pagination")
+        // console.log(result,"pagination")
       res.send(result);
       
     });
@@ -268,11 +268,11 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productCollection.findOne(query);
-      console.log({ result });
+      // console.log({ result });
       res.send(result);
     });
 
-    // for upvote
+    //------ for upvote----------
     app.patch("/upvote/:id", async (req, res) => {
       const id = req.params.id;
       console.log(id, "id");
@@ -288,10 +288,10 @@ async function run() {
       };
 
       const result = await productCollection.updateOne(filter, updateInfo);
-      console.log(result);
+      // console.log(result);
       res.send(result);
     });
-    // for downVote
+    // ------------for downVote--------------
     app.patch("/downVote/:id", async (req, res) => {
       const id = req.params.id;
       console.log(id, "id");
@@ -307,23 +307,44 @@ async function run() {
       };
 
       const result = await productCollection.updateOne(filter, updateInfo);
-      console.log(result);
+      // console.log(result);
       res.send(result);
     });
 
+    // -----featured product---------
     app.get("/featured", async (req, res) => {
       const result = await productCollection
         .find({ type: "featured" })
         .toArray();
+      // console.log({ result });
+      res.send(result);
+    });
+
+    // ---------trending products-----------
+    app.get("/trending", async (req, res) => {
+      const filter=req.query;
+      console.log(filter)
+      const query={}
+      const options={
+        sort:{
+          vote:filter.sort === 'asc' ? -1 : 1
+        }
+      }
+      const result = await productCollection
+        .find(query,options)
+        .limit(6)
+        .toArray();
       console.log({ result });
       res.send(result);
     });
 
-    app.get("/trending", async (req, res) => {
+    // ----get 10+ voted products-------
+    app.get("/popular", async (req, res) => {
+      const filter={vote:{$gte : 10}};
       const result = await productCollection
-        .find({ type: "trending" })
+        .find(filter)
         .toArray();
-      console.log({ result });
+      // console.log(result);
       res.send(result);
     });
 
@@ -344,7 +365,7 @@ async function run() {
       const result = await productCollection
         .find({ status: "reported" })
         .toArray();
-      console.log({ result });
+      // console.log({ result });
       res.send(result);
     });
 
@@ -425,7 +446,7 @@ async function run() {
     });
 
     // coupon
-    app.get("/coupons", verifyToken, async (req, res) => {
+    app.get("/coupons", async (req, res) => {
       const result = await couponCollection.find().toArray();
       res.send(result);
     });
@@ -434,10 +455,10 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await couponCollection.findOne(query);
-      console.log({ result });
+      // console.log({ result });
       res.send(result);
     });
-    app.patch("/updateCoupon/:id", verifyToken, async (req, res) => {
+    app.patch("/updateCoupon/:id",  async (req, res) => {
       const item = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
